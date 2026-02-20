@@ -1101,5 +1101,34 @@ TEST(CompiledModelTest, GetBufferRequirementsDetailed) {
   EXPECT_EQ(output_strides[0], 0);
 }
 
+TEST(CompiledModelTest, RespectsCustomAlignment256Bytes) {
+  // 1. Environment setup (Using the file's exact C++ macro pattern)
+  LITERT_ASSERT_OK_AND_ASSIGN(Environment env, litert::Environment::Create({}));
+
+  // 2. Define the custom alignment and tensor shape
+  size_t custom_alignment = 256;
+  auto tensor_type = RankedTensorType(ElementType::Float32, 
+                                      Layout(Dimensions({1, 224, 224, 3})));
+  size_t buffer_size = 1 * 224 * 224 * 3 * sizeof(float);
+
+  // 3. Create the managed buffer utilizing the custom alignment parameter
+  LITERT_ASSERT_OK_AND_ASSIGN(
+      TensorBuffer buffer,
+      TensorBuffer::CreateManaged(env, TensorBufferType::kHostMemory, 
+                                  tensor_type, buffer_size, custom_alignment));
+
+  // 4. Extract the raw memory pointer using the file's ScopedLock pattern
+  LITERT_ASSERT_OK_AND_ASSIGN(
+      auto lock_and_addr,
+      litert::TensorBufferScopedLock::Create<const float>(
+          buffer, TensorBuffer::LockMode::kRead));
+          
+  const float* host_ptr = lock_and_addr.second;
+
+  // 5. THE MATH: Is the memory address perfectly divisible by 256?
+  uintptr_t address = reinterpret_cast<uintptr_t>(host_ptr);
+  EXPECT_EQ(address % custom_alignment, 0) 
+      << "Hardware Panic: Memory address " << address << " is NOT 256-byte aligned!";
+}
 }  // namespace
 }  // namespace litert
