@@ -19,10 +19,10 @@
 #include <cstring>
 #include <utility>
 
-#include "absl/cleanup/cleanup.h"  // from @com_google_absl
-#include "absl/log/absl_check.h"  // from @com_google_absl
-#include "absl/strings/str_format.h"  // from @com_google_absl
-#include "absl/types/span.h"  // from @com_google_absl
+#include "absl/cleanup/cleanup.h"    // from @com_google_absl
+#include "absl/log/absl_check.h"     // from @com_google_absl
+#include "absl/strings/str_format.h" // from @com_google_absl
+#include "absl/types/span.h"         // from @com_google_absl
 #include "litert/c/litert_common.h"
 #include "litert/c/litert_custom_tensor_buffer.h"
 #include "litert/c/litert_gl_types.h"
@@ -46,7 +46,7 @@ namespace litert {
 /// @brief A C++ wrapper for `LiteRtTensorBuffer`, representing a tensor and
 /// its associated backing buffer.
 class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
- public:
+public:
   // TODO(b/479340050): Remove the default constructor.
   [[deprecated("Do NOT use the default constructor.")]]
   TensorBuffer()
@@ -59,16 +59,26 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// allocator guarantees `LITERT_HOST_MEMORY_BUFFER_ALIGNMENT` alignment and
   /// reserves any delegate-specific padding (e.g., XNNPACK extra bytes), so
   /// callers do not need to over-allocate manually.
-  static Expected<TensorBuffer> CreateManaged(
-      const Environment& env, TensorBufferType buffer_type,
-      const RankedTensorType& tensor_type, size_t buffer_size);
+  static Expected<TensorBuffer>
+  CreateManaged(const Environment &env, TensorBufferType buffer_type,
+                const RankedTensorType &tensor_type, size_t buffer_size);
+
+  /// @brief Creates a managed `TensorBuffer` with a specific byte alignment.
+  ///
+  /// The returned object is owned by the caller. If alignment is 0, it falls
+  /// back to the default `LITERT_HOST_MEMORY_BUFFER_ALIGNMENT`.
+  static Expected<TensorBuffer>
+  CreateManaged(const Environment &env, TensorBufferType buffer_type,
+                const RankedTensorType &tensor_type, size_t buffer_size,
+                size_t alignment);
 
   /// @brief Creates a managed host memory `TensorBuffer` using the default
   /// environment (if applicable).
   ///
   /// The returned object is owned by the caller.
-  static Expected<TensorBuffer> CreateManagedHostMemory(
-      const RankedTensorType& tensor_type, size_t buffer_size);
+  static Expected<TensorBuffer>
+  CreateManagedHostMemory(const RankedTensorType &tensor_type,
+                          size_t buffer_size);
 
   /// @brief Creates a `TensorBuffer` that wraps the provided host memory.
   ///
@@ -77,13 +87,14 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// aligned to at least `LITERT_HOST_MEMORY_BUFFER_ALIGNMENT` bytes and that
   /// any required padding for delegates like XNNPACK is included and
   /// initialized.
-  static Expected<TensorBuffer> CreateFromHostMemory(
-      const Environment& env, const RankedTensorType& tensor_type,
-      void* host_mem_addr, size_t buffer_size);
+  static Expected<TensorBuffer>
+  CreateFromHostMemory(const Environment &env,
+                       const RankedTensorType &tensor_type, void *host_mem_addr,
+                       size_t buffer_size);
 
-  static Expected<TensorBuffer> CreateFromHostMemory(
-      const RankedTensorType& tensor_type, void* host_mem_addr,
-      size_t buffer_size);
+  static Expected<TensorBuffer>
+  CreateFromHostMemory(const RankedTensorType &tensor_type, void *host_mem_addr,
+                       size_t buffer_size);
 
   /// @brief Creates a `TensorBuffer` that wraps an Android Hardware Buffer.
   ///
@@ -91,38 +102,41 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// outlive it.
   /// @param ahwb_offset The offset in bytes from the start of the
   /// `AHardwareBuffer` where the tensor data begins.
-  static Expected<TensorBuffer> CreateFromAhwb(
-      const Environment& env, const RankedTensorType& tensor_type,
-      AHardwareBuffer* ahwb, size_t ahwb_offset);
+  static Expected<TensorBuffer>
+  CreateFromAhwb(const Environment &env, const RankedTensorType &tensor_type,
+                 AHardwareBuffer *ahwb, size_t ahwb_offset);
 
   static Expected<TensorBuffer> CreateFromClBuffer(
-      const Environment& env, const RankedTensorType& tensor_type,
+      const Environment &env, const RankedTensorType &tensor_type,
       TensorBufferType buffer_type, LiteRtClMem cl_memory, size_t size_bytes);
 
-  static Expected<TensorBuffer> CreateFromGlBuffer(
-      const Environment& env, const RankedTensorType& tensor_type,
-      LiteRtGLenum target, LiteRtGLuint id, size_t size_bytes, size_t offset);
+  static Expected<TensorBuffer>
+  CreateFromGlBuffer(const Environment &env,
+                     const RankedTensorType &tensor_type, LiteRtGLenum target,
+                     LiteRtGLuint id, size_t size_bytes, size_t offset);
 
-  static Expected<TensorBuffer> CreateFromGlTexture(
-      const Environment& env, const RankedTensorType& tensor_type,
-      LiteRtGLenum target, LiteRtGLuint id, LiteRtGLenum format,
-      size_t size_bytes, LiteRtGLint layer);
+  static Expected<TensorBuffer>
+  CreateFromGlTexture(const Environment &env,
+                      const RankedTensorType &tensor_type, LiteRtGLenum target,
+                      LiteRtGLuint id, LiteRtGLenum format, size_t size_bytes,
+                      LiteRtGLint layer);
 
 #if LITERT_HAS_WEBGPU_SUPPORT
   static Expected<TensorBuffer> CreateFromWebGpuBuffer(
-      const Environment& env, const RankedTensorType& tensor_type,
+      const Environment &env, const RankedTensorType &tensor_type,
       TensorBufferType buffer_type, LiteRtWGPUBuffer buffer, size_t size_bytes);
 
-  static Expected<TensorBuffer> CreateFromWebGpuTexture(
-      const Environment& env, const RankedTensorType& tensor_type,
-      void* texture, size_t size_bytes);
-#endif  // LITERT_HAS_WEBGPU_SUPPORT
+  static Expected<TensorBuffer>
+  CreateFromWebGpuTexture(const Environment &env,
+                          const RankedTensorType &tensor_type, void *texture,
+                          size_t size_bytes);
+#endif // LITERT_HAS_WEBGPU_SUPPORT
 
 #if LITERT_HAS_METAL_SUPPORT
   static Expected<TensorBuffer> CreateFromMetalBuffer(
-      const Environment& env, const RankedTensorType& tensor_type,
-      TensorBufferType buffer_type, void* buffer, size_t size_bytes);
-#endif  // LITERT_HAS_METAL_SUPPORT
+      const Environment &env, const RankedTensorType &tensor_type,
+      TensorBufferType buffer_type, void *buffer, size_t size_bytes);
+#endif // LITERT_HAS_METAL_SUPPORT
 
   /// @brief Creates a duplicate of the current `TensorBuffer` object.
   ///
@@ -131,9 +145,9 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// removed.
   Expected<TensorBuffer> Duplicate() const;
 
-  litert::Expected<AHardwareBuffer*> GetAhwb() const {
+  litert::Expected<AHardwareBuffer *> GetAhwb() const {
 #if LITERT_HAS_AHWB_SUPPORT
-    AHardwareBuffer* ahwb;
+    AHardwareBuffer *ahwb;
     LITERT_RETURN_IF_ERROR(env_.runtime->GetTensorBufferAhwb(Get(), &ahwb));
     return ahwb;
 #else
@@ -144,7 +158,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   }
 
   struct DmaBuf {
-    void* addr;
+    void *addr;
     int fd;
   };
 
@@ -184,7 +198,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
 #endif
   }
 
-  Expected<void*> GetMetalBuffer() const {
+  Expected<void *> GetMetalBuffer() const {
 #if LITERT_HAS_METAL_SUPPORT
     HwMemoryHandle hw_memory_handle;
     LITERT_RETURN_IF_ERROR(
@@ -193,7 +207,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
 #else
     return litert::Unexpected(kLiteRtStatusErrorRuntimeFailure,
                               "Metal is not supported on this platform");
-#endif  // LITERT_HAS_METAL_SUPPORT
+#endif // LITERT_HAS_METAL_SUPPORT
   }
 
   Expected<HwMemoryHandle> GetVulkanMemory() const {
@@ -273,12 +287,12 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
     return RankedTensorType(tensor_type);
   }
 
-  bool HasType(const RankedTensorType& type) const {
+  bool HasType(const RankedTensorType &type) const {
     auto t = TensorType();
     return t && *t == type;
   }
 
-  bool HasType(const LiteRtRankedTensorType& type) const {
+  bool HasType(const LiteRtRankedTensorType &type) const {
     auto t = TensorType();
     return t && *t == ::litert::RankedTensorType(type);
   }
@@ -323,7 +337,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// @brief Sets the C++ `Event` object for the tensor buffer.
   ///
   /// This function takes ownership of the provided `Event` object.
-  Expected<void> SetEvent(Event&& event) {
+  Expected<void> SetEvent(Event &&event) {
     if (!event.IsOwned()) {
       return Error(kLiteRtStatusErrorInvalidArgument,
                    "Expected an owned event");
@@ -346,17 +360,17 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
 
   static LiteRtTensorBufferLockMode ToLiteRtLockMode(LockMode mode) {
     switch (mode) {
-      case LockMode::kRead:
-        return kLiteRtTensorBufferLockModeRead;
-      case LockMode::kWrite:
-        return kLiteRtTensorBufferLockModeWrite;
-      case LockMode::kReadWrite:
-        return kLiteRtTensorBufferLockModeReadWrite;
+    case LockMode::kRead:
+      return kLiteRtTensorBufferLockModeRead;
+    case LockMode::kWrite:
+      return kLiteRtTensorBufferLockModeWrite;
+    case LockMode::kReadWrite:
+      return kLiteRtTensorBufferLockModeReadWrite;
     }
   }
 
-  Expected<void*> Lock(LockMode mode = LockMode::kWrite) {
-    void* host_mem_addr;
+  Expected<void *> Lock(LockMode mode = LockMode::kWrite) {
+    void *host_mem_addr;
     LITERT_RETURN_IF_ERROR(env_.runtime->LockTensorBuffer(
         Get(), &host_mem_addr, ToLiteRtLockMode(mode)));
     return host_mem_addr;
@@ -372,9 +386,8 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   ///
   /// Returns an error if the provided buffer is larger than the tensor
   /// buffer's size.
-  template <typename T>
-  Expected<void> Write(absl::Span<const T> data) {
-    LITERT_ASSIGN_OR_RETURN(void* host_mem_addr, Lock(LockMode::kWrite));
+  template <typename T> Expected<void> Write(absl::Span<const T> data) {
+    LITERT_ASSIGN_OR_RETURN(void *host_mem_addr, Lock(LockMode::kWrite));
     absl::Cleanup unlock = [this] { Unlock(); };
     LITERT_ASSIGN_OR_RETURN(size_t size, PackedSize());
     if (size < data.size() * sizeof(T)) {
@@ -395,9 +408,8 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// If the provided buffer is smaller than the tensor buffer, data will be
   /// read up to the size of the provided buffer. Returns an error if the
   /// provided buffer is larger than the tensor buffer.
-  template <typename T>
-  Expected<void> Read(absl::Span<T> data) {
-    LITERT_ASSIGN_OR_RETURN(void* host_mem_addr, Lock(LockMode::kRead));
+  template <typename T> Expected<void> Read(absl::Span<T> data) {
+    LITERT_ASSIGN_OR_RETURN(void *host_mem_addr, Lock(LockMode::kRead));
     absl::Cleanup unlock = [this] { Unlock(); };
     LITERT_ASSIGN_OR_RETURN(size_t size, PackedSize());
     size_t total_read_size = data.size() * sizeof(T);
@@ -423,7 +435,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
     }
 
     // Fall back to synchronous write.
-    LITERT_ASSIGN_OR_RETURN(void* host_mem_addr, Lock(LockMode::kWrite));
+    LITERT_ASSIGN_OR_RETURN(void *host_mem_addr, Lock(LockMode::kWrite));
     absl::Cleanup unlock = [this] { Unlock(); };
     LITERT_ASSIGN_OR_RETURN(size_t size, PackedSize());
     std::memset(host_mem_addr, 0, size);
@@ -445,16 +457,16 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   /// @brief Wraps a `LiteRtTensorBuffer` C object in a `TensorBuffer` C++
   /// object.
   /// @warning This is for internal use only.
-  static TensorBuffer WrapCObject(const internal::EnvironmentHolder& env,
+  static TensorBuffer WrapCObject(const internal::EnvironmentHolder &env,
                                   LiteRtTensorBuffer tensor_buffer,
                                   OwnHandle owned) {
     return TensorBuffer(env, tensor_buffer, owned);
   }
 
- private:
+private:
   /// @param owned Indicates if the created `TensorBuffer` object should take
   /// ownership of the provided `tensor_buffer` handle.
-  explicit TensorBuffer(const internal::EnvironmentHolder& env,
+  explicit TensorBuffer(const internal::EnvironmentHolder &env,
                         LiteRtTensorBuffer tensor_buffer, OwnHandle owned)
       : internal::BaseHandle<LiteRtTensorBuffer>(
             tensor_buffer,
@@ -467,7 +479,7 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
   // This is only used for managing the lifetime of ad-hoc environment for
   // legacy cases.
   [[deprecated("Do not use this field.")]]
-  static const Expected<Environment>& GetDefaultEnvironment() {
+  static const Expected<Environment> &GetDefaultEnvironment() {
     static const Expected<Environment> kDefaultEnvironment =
         Environment::Create({});
     return kDefaultEnvironment;
@@ -480,14 +492,14 @@ class TensorBuffer : public internal::BaseHandle<LiteRtTensorBuffer> {
 
 /// @brief A scoped lock for a `TensorBuffer`.
 class TensorBufferScopedLock {
- public:
-  TensorBufferScopedLock(const TensorBufferScopedLock& arg) = delete;
-  TensorBufferScopedLock(TensorBufferScopedLock&& arg) noexcept
+public:
+  TensorBufferScopedLock(const TensorBufferScopedLock &arg) = delete;
+  TensorBufferScopedLock(TensorBufferScopedLock &&arg) noexcept
       : env_(arg.env_), tensor_buffer_(arg.tensor_buffer_) {
     arg.tensor_buffer_ = nullptr;
   };
 
-  TensorBufferScopedLock& operator=(TensorBufferScopedLock&& other) noexcept {
+  TensorBufferScopedLock &operator=(TensorBufferScopedLock &&other) noexcept {
     if (this != &other) {
       env_ = other.env_;
       tensor_buffer_ = other.tensor_buffer_;
@@ -503,37 +515,37 @@ class TensorBufferScopedLock {
   }
 
   template <typename T = void>
-  static Expected<std::pair<TensorBufferScopedLock, T*>> Create(
-      TensorBuffer& tensor_buffer, TensorBuffer::LockMode mode) {
+  static Expected<std::pair<TensorBufferScopedLock, T *>>
+  Create(TensorBuffer &tensor_buffer, TensorBuffer::LockMode mode) {
     return Create<T>(tensor_buffer.env_, tensor_buffer.Get(), mode);
   }
 
   template <typename T = void>
-  static Expected<std::pair<TensorBufferScopedLock, const T*>> Create(
-      const TensorBuffer& tensor_buffer, TensorBuffer::LockMode mode) {
+  static Expected<std::pair<TensorBufferScopedLock, const T *>>
+  Create(const TensorBuffer &tensor_buffer, TensorBuffer::LockMode mode) {
     return Create<const T>(tensor_buffer.env_, tensor_buffer.Get(), mode);
   }
 
   template <typename T = void>
-  static Expected<std::pair<TensorBufferScopedLock, T*>> Create(
-      const internal::EnvironmentHolder& env, LiteRtTensorBuffer tensor_buffer,
-      TensorBuffer::LockMode mode) {
-    void* host_mem_addr;
+  static Expected<std::pair<TensorBufferScopedLock, T *>>
+  Create(const internal::EnvironmentHolder &env,
+         LiteRtTensorBuffer tensor_buffer, TensorBuffer::LockMode mode) {
+    void *host_mem_addr;
     LITERT_RETURN_IF_ERROR(env.runtime->LockTensorBuffer(
         tensor_buffer, &host_mem_addr, TensorBuffer::ToLiteRtLockMode(mode)));
     return std::make_pair(TensorBufferScopedLock(env, tensor_buffer),
-                          static_cast<T*>(host_mem_addr));
+                          static_cast<T *>(host_mem_addr));
   }
 
- private:
-  explicit TensorBufferScopedLock(const internal::EnvironmentHolder& env,
-                                  LiteRtTensorBuffer& tensor_buffer)
+private:
+  explicit TensorBufferScopedLock(const internal::EnvironmentHolder &env,
+                                  LiteRtTensorBuffer &tensor_buffer)
       : env_(env), tensor_buffer_(tensor_buffer) {}
 
   internal::EnvironmentHolder env_;
   LiteRtTensorBuffer tensor_buffer_;
 };
 
-}  // namespace litert
+} // namespace litert
 
-#endif  // ODML_LITERT_LITERT_CC_LITERT_TENSOR_BUFFER_H_
+#endif // ODML_LITERT_LITERT_CC_LITERT_TENSOR_BUFFER_H_
