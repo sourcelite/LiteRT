@@ -30,6 +30,7 @@
 #define INCLUDE_QUALCOMM_RUNTIME_FLAGS
 #define INCLUDE_MEDIATEK_RUNTIME_FLAGS
 #define INCLUDE_GOOGLE_TENSOR_RUNTIME_FLAGS
+#define INCLUDE_INTEL_OPENVINO_RUNTIME_FLAGS
 
 #include "absl/flags/flag.h"  // from @com_google_absl
 #include "absl/flags/parse.h"  // from @com_google_absl
@@ -47,6 +48,7 @@
 #include "litert/tools/flags/vendors/google_tensor_flags.h"  // IWYU pragma: keep
 #include "litert/tools/flags/vendors/mediatek_flags.h"  // IWYU pragma: keep
 #include "litert/tools/flags/vendors/qualcomm_flags.h"  // IWYU pragma: keep
+#include "litert/tools/flags/vendors/intel_openvino_flags.h"  // IWYU pragma: keep
 #include "litert/tools/tensor_utils.h"  // IWYU pragma: keep
 
 // NPU and CPU models must have the same input signature
@@ -74,6 +76,7 @@ namespace {
 using ::litert::google_tensor::UpdateGoogleTensorOptionsFromFlags;
 using ::litert::mediatek::UpdateMediatekOptionsFromFlags;
 using ::litert::qualcomm::UpdateQualcommOptionsFromFlags;
+using ::litert::intel_openvino::UpdateIntelOpenVinoOptionsFromFlags;
 
 Expected<Environment> GetEnvironment() {
   std::vector<EnvironmentOptions::Option> env_options;
@@ -97,6 +100,10 @@ Expected<Options> GetOptions() {
       UpdateGoogleTensorOptionsFromFlags(google_tensor_opts));
   LITERT_ASSIGN_OR_RETURN(auto& mediatek_opts, options.GetMediatekOptions());
   LITERT_RETURN_IF_ERROR(UpdateMediatekOptionsFromFlags(mediatek_opts));
+  LITERT_ASSIGN_OR_RETURN(auto& intel_openvino_opts,
+                          options.GetIntelOpenVinoOptions());
+  LITERT_RETURN_IF_ERROR(
+      UpdateIntelOpenVinoOptionsFromFlags(intel_openvino_opts));
   return options;
 }
 
@@ -242,7 +249,9 @@ void PrintDifferenceDistribution(const std::vector<float>& cpu_data,
 // Compares a single pair of output buffers and prints the results.
 Expected<void> CompareSingleOutputBuffer(TensorBuffer& cpu_buffer,
                                          TensorBuffer& npu_buffer,
-                                         size_t buffer_index, float epsilon) {
+                                         size_t buffer_index,
+                                         absl::string_view output_name,
+                                         float epsilon) {
   std::vector<std::pair<float, int>> all_diffs;
   const int kMaxPrint = 20;
   int printed = 0;
@@ -286,7 +295,8 @@ Expected<void> CompareSingleOutputBuffer(TensorBuffer& cpu_buffer,
     }
   }
 
-  ABSL_LOG(INFO) << "Comparing output buffer " << buffer_index << ":";
+  ABSL_LOG(INFO) << "Comparing output buffer " << buffer_index
+                 << " (name: " << output_name << "):";
 
   auto get_val = [&](TensorBuffer& buffer,
                      std::vector<float>& buffer_data) -> Expected<void> {
@@ -426,16 +436,23 @@ Expected<void> CompareSingleOutputBuffer(TensorBuffer& cpu_buffer,
   std::cout << "Pearson correlation: " << pearson_correlation << std::endl;
   std::cout << "Total " << total_different << " out of " << total_elements
             << " are different elements, for output #" << buffer_index
-            << ", threshold - " << epsilon << std::endl;
+            << " (name: " << output_name << "), threshold - " << epsilon
+            << std::endl;
   return {};
 }
 
 Expected<void> CompareOutputBuffers(
     std::vector<TensorBuffer>& cpu_output_buffers,
-    std::vector<TensorBuffer>& npu_output_buffers) {
+    std::vector<TensorBuffer>& npu_output_buffers,
+    const std::vector<absl::string_view>& output_names) {
   if (cpu_output_buffers.size() != npu_output_buffers.size()) {
     return Error(kLiteRtStatusErrorInvalidArgument,
                  "Number of output buffers mismatch between CPU and NPU.");
+  }
+  if (cpu_output_buffers.size() != output_names.size()) {
+    return Error(
+        kLiteRtStatusErrorInvalidArgument,
+        "Number of output buffers mismatch between CPU buffers and names.");
   }
 
   float epsilon = absl::GetFlag(FLAGS_epsilon);
@@ -443,8 +460,8 @@ Expected<void> CompareOutputBuffers(
   for (size_t i = 0; i < num_output_buffers; ++i) {
     auto& cpu_buffer = cpu_output_buffers[i];
     auto& npu_buffer = npu_output_buffers[i];
-    LITERT_RETURN_IF_ERROR(
-        CompareSingleOutputBuffer(cpu_buffer, npu_buffer, i, epsilon));
+    LITERT_RETURN_IF_ERROR(CompareSingleOutputBuffer(cpu_buffer, npu_buffer, i,
+                                                     output_names[i], epsilon));
   }
   return {};
 }
@@ -524,9 +541,14 @@ Expected<void> RunModel() {
   LITERT_RETURN_IF_ERROR(compiled_model_npu.Run(
       signature_index, npu_input_buffers, npu_output_buffers));
 
+  // Get output names
+  LITERT_ASSIGN_OR_RETURN(
+      auto output_names,
+      compiled_model_cpu.GetSignatureOutputNames(signature_index));
+
   // Compare output buffers
-  LITERT_RETURN_IF_ERROR(
-      CompareOutputBuffers(cpu_output_buffers, npu_output_buffers));
+  LITERT_RETURN_IF_ERROR(CompareOutputBuffers(
+      cpu_output_buffers, npu_output_buffers, output_names));
 
   return {};
 }

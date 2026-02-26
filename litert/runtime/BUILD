@@ -581,6 +581,7 @@ cc_library(
         "//litert/core:options",
         "//litert/core/model",
         "//litert/core/util:flatbuffer_tools",
+        "//litert/runtime/accelerators/xnnpack:xnnpack_accelerator",  # buildcleaner: keep
         "//litert/runtime/dispatch:dispatch_opaque_options",
         # copybara:uncomment "//third_party/odml/litert/weight_loader:external_weight_loader",
         "//tflite/converter:allocation",
@@ -626,15 +627,17 @@ cc_test(
         "//litert/c:litert_environment",
         "//litert/c:litert_layout",
         "//litert/c:litert_model",
+        "//litert/c:litert_opaque_options_header",
         "//litert/c:litert_profiler",
         "//litert/c:litert_tensor_buffer",
         "//litert/c:litert_tensor_buffer_types",
+        "//litert/c/options:litert_runtime_options",
         "//litert/cc:litert_element_type",
         "//litert/cc:litert_environment",
         "//litert/cc:litert_expected",
         "//litert/cc:litert_layout",
         "//litert/cc:litert_macros",
-        "//litert/cc:litert_model",
+        "//litert/cc:litert_opaque_options",
         "//litert/cc:litert_ranked_tensor_type",
         "//litert/cc:litert_tensor_buffer",
         "//litert/cc:litert_tensor_buffer_types",
@@ -772,8 +775,8 @@ cc_test(
     deps = [
         ":litert_runtime_options",
         "//litert/c:litert_common",
-        "//third_party/tomlplusplus",
         "@com_google_googletest//:gtest_main",
+        "@tomlplusplus",
     ],
 )
 
